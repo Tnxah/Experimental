@@ -6,17 +6,18 @@ using UnityEngine;
 public class TimeController : MonoBehaviour
 {
 
-    private float startRecordingtTime;
-    public float startReversingtTime;
+    private float _startRecordingTime;
+    private float _startReversingtTime;
 
     public List<Vector3> recordedPosition; 
     public List<Quaternion> recordedRotation; 
     public List<float> recordedTime;
 
     public bool recording = false;
-    public bool reversing = false;
-
     public bool test = false;
+
+    public bool infiniteRecording;
+    public float recordingSecondsLimit = 4f;
 
     private void Awake()
     {
@@ -26,29 +27,41 @@ public class TimeController : MonoBehaviour
         recordedRotation = new List<Quaternion>();
     }
 
-    // Start is called before the first frame update
     void Start()
     {
         Record();
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (recording)
         {
-            var time = Time.time - startRecordingtTime;
+            var time = Time.time - _startRecordingTime;
 
             recordedTime.Add(time);
             recordedPosition.Add(transform.position);
             recordedRotation.Add(transform.rotation);
+
+
+            if (recordedTime[recordedTime.Count - 1] - recordedTime[0] > recordingSecondsLimit)
+            {
+                if (infiniteRecording)
+                {
+                    recordedTime.RemoveAt(0);
+                    recordedPosition.RemoveAt(0);
+                    recordedRotation.RemoveAt(0);
+                }
+                else
+                {
+                    recording = false;
+                }
+            }
         }
 
 
         if (test)
         {
             StartCoroutine(Reverse());
-            //Reverse();
             test = false;
         }
     }
@@ -56,30 +69,28 @@ public class TimeController : MonoBehaviour
 
     private void Record()
     {
-        startRecordingtTime = Time.time;
+        _startRecordingTime = Time.time;
         recording = true;
     }
 
     private IEnumerator Reverse()
     {
         GetComponent<Rigidbody>().useGravity = false;
-        startReversingtTime = Time.time;
-        reversing = true;
+        _startReversingtTime = Time.time;
 
 
         for (int i = recordedTime.Count-1; i >= 0 ; i--)
         {
-            yield return new WaitUntil(() => (Time.time - startReversingtTime >= recordedTime[recordedTime.Count-1] - recordedTime[i]));
+            yield return new WaitUntil(() => (Time.time - _startReversingtTime >= recordedTime[recordedTime.Count-1] - recordedTime[i])); //проблема в том что для бесконечности время реверсии неправильное
 
             transform.position = recordedPosition[i];
             transform.rotation = recordedRotation[i];
             
         }
 
-        reversing = false;
-
-
+        GetComponent<Rigidbody>().useGravity = true;
         GetComponent<Rigidbody>().velocity = Vector3.zero;
+
         yield return null;
     }
 }
